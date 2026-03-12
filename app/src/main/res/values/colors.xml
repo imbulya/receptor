@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="home_bg">#FFF7F0</color>
+    <color name="text_primary">#3D3530</color>
+    <color name="text_secondary">#9A8F8A</color>
+    <color name="text_muted">#7A706C</color>
+
+    <color name="alert_red">#B83040</color>
+    <color name="alert_yellow">#A07010</color>
+    <color name="alert_red_soft">#FDD8E0</color>
+    <color name="alert_yellow_soft">#F5E8CC</color>
+
+    <color name="section_green">#3A8C48</color>
+    <color name="section_orange">#C2621A</color>
+    <color name="section_purple">#7A3AB0</color>
+</resources>

@@ -1,0 +1,52 @@
+﻿<resources>
+    <string name="app_name">Рецептор</string>
+    <string name="home_title">Рецептор</string>
+    <string name="home_expiry_attention">Обратите внимание на запасы</string>
+    <string name="home_to_list">К списку</string>
+    <string name="home_all_fresh_title">Все продукты свежие!</string>
+    <string name="home_all_fresh_subtitle">Срок годности в порядке</string>
+    <string name="home_recipe_of_day">РЕЦЕПТ ДНЯ</string>
+    <string name="home_match_suffix">совпадение</string>
+    <string name="home_min_suffix">мин</string>
+    <string name="home_sections_title">РАЗДЕЛЫ</string>
+    <string name="section_products">Мои продукты</string>
+    <string name="section_products_desc">Управляйте запасами</string>
+    <string name="section_recipes">Рецепты</string>
+    <string name="section_recipes_desc">Найдите идеальное блюдо</string>
+    <string name="section_shopping">Список покупок</string>
+    <string name="section_shopping_desc">Планируйте покупки</string>
+
+    <string name="products_title">Мои продукты</string>
+    <string name="add_category">Добавить категорию</string>
+    <string name="new_category">Новая категория</string>
+    <string name="close">Закрыть</string>
+    <string name="name_label">НАЗВАНИЕ</string>
+    <string name="category_name_hint">Например: Консервы</string>
+    <string name="icon_label">ИКОНКА</string>
+    <string name="color_label">ЦВЕТ</string>
+    <string name="preview">Предпросмотр</string>
+    <string name="category_name_default">Название категории</string>
+    <string name="create_category">Создать категорию</string>
+    <string name="category_name_required">Введите название категории</string>
+
+    <string name="add_product">Добавить продукт</string>
+    <string name="empty_category_products">Продукты этой категории пока не добавлены</string>
+    <string name="add_manual">Добавить вручную</string>
+    <string name="add_from_receipt">Добавить из чека</string>
+    <string name="receipt_placeholder_note">Экран распознавания чека добавим на следующем шаге.</string>
+    <string name="product_name_hint">Например: Консервы</string>
+    <string name="quantity_label">КОЛИЧЕСТВО</string>
+    <string name="expiry_date_label">СРОК ГОДНОСТИ</string>
+    <string name="select_date">Дата</string>
+    <string name="save">Сохранить</string>
+    <string name="product_name_required">Введите название продукта</string>
+
+    <string name="status_fresh">Свежий</string>
+    <string name="status_expiring">Скоро истекает</string>
+    <string name="status_expired">Просрочен</string>
+    <string name="unit_label">Ед. %1$d — %2$s</string>
+    <string name="expiry_until">Годен до: %1$s</string>
+
+    <string name="placeholder_note">Этот экран реализуем на следующем шаге.</string>
+    <string name="back">Назад</string>
+</resources>
