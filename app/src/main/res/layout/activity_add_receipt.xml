@@ -54,59 +54,165 @@
             android:paddingEnd="20dp">
 
             <LinearLayout
+                android:id="@+id/scan_block"
                 android:layout_width="match_parent"
-                android:layout_height="160dp"
-                android:layout_marginTop="4dp"
-                android:background="@drawable/bg_receipt_camera"
-                android:gravity="center"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical">
 
-                <ImageView
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:src="@android:drawable/ic_menu_camera"
-                    android:tint="@color/text_muted" />
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp"
+                    android:background="@drawable/bg_receipt_camera"
+                    android:padding="16dp">
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_receipt_camera_inner" />
+
+                    <View
+                        android:layout_width="26dp"
+                        android:layout_height="2dp"
+                        android:layout_gravity="start|top"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/bg_scan_corner" />
+
+                    <View
+                        android:layout_width="2dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="start|top"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/bg_scan_corner" />
+
+                    <View
+                        android:layout_width="26dp"
+                        android:layout_height="2dp"
+                        android:layout_gravity="end|top"
+                        android:layout_marginEnd="10dp"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/bg_scan_corner" />
+
+                    <View
+                        android:layout_width="2dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="end|top"
+                        android:layout_marginEnd="10dp"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/bg_scan_corner" />
+
+                    <View
+                        android:layout_width="26dp"
+                        android:layout_height="2dp"
+                        android:layout_gravity="start|bottom"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginBottom="10dp"
+                        android:background="@drawable/bg_scan_corner" />
+
+                    <View
+                        android:layout_width="2dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="start|bottom"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginBottom="10dp"
+                        android:background="@drawable/bg_scan_corner" />
+
+                    <View
+                        android:layout_width="26dp"
+                        android:layout_height="2dp"
+                        android:layout_gravity="end|bottom"
+                        android:layout_marginEnd="10dp"
+                        android:layout_marginBottom="10dp"
+                        android:background="@drawable/bg_scan_corner" />
+
+                    <View
+                        android:layout_width="2dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="end|bottom"
+                        android:layout_marginEnd="10dp"
+                        android:layout_marginBottom="10dp"
+                        android:background="@drawable/bg_scan_corner" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical">
+
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@android:drawable/ic_menu_camera"
+                            android:tint="#BFC1D6" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="@string/receipt_camera_hint"
+                            android:textColor="#BFC1D6"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </FrameLayout>
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:id="@+id/tv_receipt_scan_desc"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="@string/receipt_camera_hint"
+                    android:layout_marginTop="14dp"
+                    android:text="@string/receipt_scan_desc"
                     android:textColor="@color/text_secondary"
                     android:textSize="13sp" />
 
                 <Button
                     android:id="@+id/btn_scan_receipt"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
                     android:layout_marginTop="12dp"
                     android:background="@drawable/bg_fab_green"
-                    android:minHeight="0dp"
-                    android:minWidth="0dp"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
                     android:text="@string/receipt_scan"
                     android:textAllCaps="false"
                     android:textColor="@color/white"
-                    android:textSize="14sp"
+                    android:textSize="15sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:id="@+id/receipt_banner"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:fontFamily="sans-serif-medium"
-                android:text="@string/receipt_items_title"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_receipt_banner"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="✓"
+                    android:textColor="#2D6E35"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_receipt_banner"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:textColor="#2D6E35"
+                    android:textSize="13sp" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tv_receipt_empty"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="12dp"
                 android:background="@drawable/bg_section_card"
                 android:padding="14dp"
                 android:text="@string/receipt_empty"
@@ -117,20 +223,8 @@
                 android:id="@+id/receipt_items_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="8dp"
                 android:orientation="vertical" />
-
-            <Button
-                android:id="@+id/btn_add_row"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/bg_section_card"
-                android:text="@string/receipt_add_row"
-                android:textAllCaps="false"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp"
-                android:textStyle="bold" />
 
         </LinearLayout>
     </ScrollView>
