@@ -33,6 +33,17 @@
     <string name="empty_category_products">Продукты этой категории пока не добавлены</string>
     <string name="add_manual">Добавить вручную</string>
     <string name="add_from_receipt">Добавить из чека</string>
+    <string name="receipt_title">Добавить из чека</string>
+    <string name="receipt_camera_hint">Наведите камеру на чек</string>
+    <string name="receipt_scan">Сканировать чек</string>
+    <string name="receipt_items_title">Найденные позиции</string>
+    <string name="receipt_empty">Пока нет позиций. Нажмите «Сканировать чек» или добавьте строки вручную.</string>
+    <string name="receipt_add_row">Добавить позицию</string>
+    <string name="receipt_confirm">Подтвердить</string>
+    <string name="receipt_name_hint">Название товара</string>
+    <string name="receipt_qty_hint">Кол-во</string>
+    <string name="receipt_date_hint">Срок годности не выбран</string>
+    <string name="receipt_no_items">Добавьте хотя бы одну позицию</string>
     <string name="receipt_placeholder_note">Экран распознавания чека добавим на следующем шаге.</string>
     <string name="product_name_hint">Например: Консервы</string>
     <string name="quantity_label">КОЛИЧЕСТВО</string>
@@ -40,6 +51,7 @@
     <string name="select_date">Дата</string>
     <string name="save">Сохранить</string>
     <string name="product_name_required">Введите название продукта</string>
+    <string name="remove">Удалить</string>
 
     <string name="status_fresh">Свежий</string>
     <string name="status_expiring">Скоро истекает</string>

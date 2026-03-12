@@ -260,9 +260,8 @@ public class ProductCategoryActivity extends AppCompatActivity {
 
         addReceiptButton.setOnClickListener(v -> {
             dialog.dismiss();
-            Intent intent = new Intent(this, PlaceholderActivity.class);
-            intent.putExtra(PlaceholderActivity.EXTRA_TITLE, getString(R.string.add_from_receipt));
-            intent.putExtra(PlaceholderActivity.EXTRA_NOTE, getString(R.string.receipt_placeholder_note));
+            Intent intent = new Intent(this, AddReceiptActivity.class);
+            intent.putExtra(AddReceiptActivity.EXTRA_CATEGORY_ID, categoryId);
             startActivity(intent);
         });
 

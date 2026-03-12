@@ -1,0 +1,7 @@
+<resources>
+    <string-array name="receipt_sample_items">
+        <item>Молоко</item>
+        <item>Бананы</item>
+        <item>Хлеб</item>
+    </string-array>
+</resources>
