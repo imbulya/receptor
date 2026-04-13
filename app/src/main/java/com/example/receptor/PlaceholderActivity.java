@@ -25,7 +25,8 @@ public class PlaceholderActivity extends AppCompatActivity {
         View root = findViewById(R.id.placeholder_root);
         ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left + dp(20), systemBars.top + dp(20), systemBars.right + dp(20), systemBars.bottom + dp(20));
+            int padding = Ui.dp(this, 20);
+            v.setPadding(systemBars.left + padding, systemBars.top + padding, systemBars.right + padding, systemBars.bottom + padding);
             return insets;
         });
 
@@ -40,9 +41,5 @@ public class PlaceholderActivity extends AppCompatActivity {
         noteView.setText(note == null || note.isEmpty() ? getString(R.string.placeholder_note) : note);
 
         backButton.setOnClickListener(v -> finish());
-    }
-
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 }

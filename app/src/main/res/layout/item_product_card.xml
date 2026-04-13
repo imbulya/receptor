@@ -6,7 +6,8 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
     app:cardCornerRadius="18dp"
-    app:cardElevation="2dp"
+    app:cardElevation="0dp"
+    app:cardUseCompatPadding="false"
     app:strokeColor="#0F000000"
     app:strokeWidth="1dp">
 
@@ -20,7 +21,10 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:padding="14dp">
+            android:paddingStart="16dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="14dp">
 
             <LinearLayout
                 android:id="@+id/product_info_click_area"
@@ -36,16 +40,17 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:textColor="@color/text_primary"
-                    android:textSize="15sp"
+                    android:textSize="17sp"
                     android:textStyle="bold" />
 
                 <ImageView
                     android:id="@+id/iv_expand"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
                     android:layout_marginStart="8dp"
                     android:src="@drawable/ic_chevron_right"
-                    android:visibility="gone" />
+                    android:visibility="gone"
+                    app:tint="@color/text_muted" />
             </LinearLayout>
 
             <LinearLayout
@@ -55,19 +60,19 @@
                 android:layout_marginStart="12dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="10dp"
+                android:paddingStart="12dp"
                 android:paddingTop="6dp"
-                android:paddingEnd="10dp"
+                android:paddingEnd="12dp"
                 android:paddingBottom="6dp">
 
                 <TextView
                     android:id="@+id/btn_minus"
                     android:layout_width="26dp"
                     android:layout_height="26dp"
-                    android:background="@drawable/bg_settings_button"
+                    android:background="@drawable/bg_qty_button"
                     android:gravity="center"
                     android:text="−"
-                    android:textSize="16sp"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -83,10 +88,10 @@
                     android:id="@+id/btn_plus"
                     android:layout_width="26dp"
                     android:layout_height="26dp"
-                    android:background="@drawable/bg_settings_button"
+                    android:background="@drawable/bg_qty_button"
                     android:gravity="center"
                     android:text="+"
-                    android:textSize="16sp"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>

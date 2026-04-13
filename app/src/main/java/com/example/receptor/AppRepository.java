@@ -1,5 +1,12 @@
 package com.example.receptor;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -12,6 +19,13 @@ public final class AppRepository {
 
     private static final String DATE_PATTERN = "yyyy-MM-dd";
     private static final Locale RU_LOCALE = new Locale("ru");
+    private static final String PREFS_NAME = "receptor_repo";
+    private static final String OTHER_CATEGORY_ID = "other";
+    private static final String KEY_CUSTOM_CATEGORIES = "custom_categories";
+    private static final String KEY_PRODUCTS = "products";
+    private static final String KEY_EXPIRY_DAYS = "expiry_days";
+    private static final String KEY_UNIT_COUNTER = "unit_counter";
+    private static final int MAX_EXPIRY_WARNING_DAYS = 60;
     private static AppRepository instance;
 
     private final SimpleDateFormat apiDateFormat = new SimpleDateFormat(DATE_PATTERN, Locale.US);
@@ -20,26 +34,34 @@ public final class AppRepository {
     private final List<Category> baseCategories = new ArrayList<>();
     private final List<Category> customCategories = new ArrayList<>();
     private final List<Product> products = new ArrayList<>();
+    private final SharedPreferences prefs;
 
-    private final int expiryWarningDays = 3;
+    private int expiryWarningDays = 3;
     private int unitCounter = 1;
 
-    private AppRepository() {
+    private AppRepository(Context context) {
+        prefs = context == null
+                ? null
+                : context.getApplicationContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         seedCategories();
-        seedProducts();
+        loadFromStorage();
+    }
+
+    public static synchronized AppRepository getInstance(Context context) {
+        if (instance == null) {
+            instance = new AppRepository(context);
+        }
+        return instance;
     }
 
     public static synchronized AppRepository getInstance() {
-        if (instance == null) {
-            instance = new AppRepository();
-        }
-        return instance;
+        return getInstance(null);
     }
 
     public synchronized List<Category> getVisibleCategories() {
         List<Category> result = new ArrayList<>();
         for (Category category : baseCategories) {
-            if (!"other".equals(category.id)) {
+            if (!OTHER_CATEGORY_ID.equals(category.id)) {
                 result.add(category.copy());
             }
         }
@@ -50,17 +72,8 @@ public final class AppRepository {
     }
 
     public synchronized Category getCategoryById(String categoryId) {
-        for (Category category : baseCategories) {
-            if (category.id.equals(categoryId)) {
-                return category.copy();
-            }
-        }
-        for (Category category : customCategories) {
-            if (category.id.equals(categoryId)) {
-                return category.copy();
-            }
-        }
-        return null;
+        Category category = findCategoryInternal(categoryId);
+        return category == null ? null : category.copy();
     }
 
     public synchronized int getInStockCategoryCount(String categoryId) {
@@ -83,44 +96,100 @@ public final class AppRepository {
         return result;
     }
 
+    public synchronized List<Product> getAllProducts() {
+        List<Product> result = new ArrayList<>();
+        for (Product product : products) {
+            result.add(product.copy());
+        }
+        return result;
+    }
+
     public synchronized int getExpiryWarningDays() {
         return expiryWarningDays;
     }
 
+    public synchronized void setExpiryWarningDays(int days) {
+        if (days < 1) {
+            expiryWarningDays = 1;
+        } else {
+            expiryWarningDays = Math.min(days, MAX_EXPIRY_WARNING_DAYS);
+        }
+        persist();
+    }
+
     public synchronized void addUnit(String productId, String expiryDate) {
-        for (Product product : products) {
-            if (product.id.equals(productId)) {
-                product.units.add(new ProductUnit(newUnitId(), expiryDate));
-                return;
-            }
+        Product product = findProductInternalById(productId);
+        if (product != null) {
+            product.units.add(new ProductUnit(newUnitId(), expiryDate));
+            persist();
         }
     }
 
     public synchronized void removeUnit(String productId) {
-        for (Product product : products) {
-            if (product.id.equals(productId) && !product.units.isEmpty()) {
-                product.units.remove(product.units.size() - 1);
-                return;
-            }
+        Product product = findProductInternalById(productId);
+        if (product != null && !product.units.isEmpty()) {
+            product.units.remove(product.units.size() - 1);
+            persist();
         }
     }
 
-    public synchronized void addCategory(String name, String emoji, String bgColor, String textColor) {
+    public synchronized Category addCategory(String name, String emoji, String bgColor, String textColor) {
         String categoryId = "cat_" + System.currentTimeMillis();
-        customCategories.add(new Category(categoryId, name, emoji, bgColor, textColor));
+        Category category = new Category(categoryId, name, emoji, bgColor, textColor);
+        customCategories.add(category);
+        persist();
+        return category;
+    }
+
+    public synchronized boolean isSystemCategory(String categoryId) {
+        if (categoryId == null) {
+            return false;
+        }
+        for (Category category : baseCategories) {
+            if (category.id.equals(categoryId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public synchronized boolean removeCategory(String categoryId) {
+        if (categoryId == null || categoryId.trim().isEmpty()) {
+            return false;
+        }
+        for (Category category : baseCategories) {
+            if (category.id.equals(categoryId)) {
+                return false;
+            }
+        }
+        if (OTHER_CATEGORY_ID.equals(categoryId)) {
+            return false;
+        }
+        boolean removed = false;
+        for (int i = 0; i < customCategories.size(); i++) {
+            if (customCategories.get(i).id.equals(categoryId)) {
+                customCategories.remove(i);
+                removed = true;
+                break;
+            }
+        }
+        if (!removed) {
+            return false;
+        }
+        for (int i = products.size() - 1; i >= 0; i--) {
+            if (categoryId.equals(products.get(i).categoryId)) {
+                products.remove(i);
+            }
+        }
+        persist();
+        return true;
     }
 
     public synchronized void addProductManual(String categoryId, String productName, int quantity, String expiryDate) {
         if (quantity <= 0) {
             return;
         }
-        Product existing = null;
-        for (Product product : products) {
-            if (product.categoryId.equals(categoryId) && product.name.equalsIgnoreCase(productName)) {
-                existing = product;
-                break;
-            }
-        }
+        Product existing = findProductInternalByName(categoryId, productName);
 
         if (existing == null) {
             existing = new Product("p_custom_" + System.currentTimeMillis(), productName, categoryId, new ArrayList<>());
@@ -130,18 +199,211 @@ public final class AppRepository {
         for (int i = 0; i < quantity; i++) {
             existing.units.add(new ProductUnit(newUnitId(), expiryDate));
         }
+        persist();
+    }
+
+    public synchronized boolean addProductNameOnly(String categoryId, String productName) {
+        if (productName == null || productName.trim().isEmpty()) {
+            return false;
+        }
+        for (Product product : products) {
+            if (product.categoryId.equals(categoryId) && product.name.equalsIgnoreCase(productName.trim())) {
+                return false;
+            }
+        }
+        products.add(new Product("p_custom_" + System.currentTimeMillis(), productName.trim(), categoryId, new ArrayList<>()));
+        persist();
+        return true;
+    }
+
+    public synchronized boolean removeUnitById(String productId, String unitId) {
+        if (unitId == null) {
+            return false;
+        }
+        Product product = findProductInternalById(productId);
+        if (product == null) {
+            return false;
+        }
+        for (int i = 0; i < product.units.size(); i++) {
+            if (unitId.equals(product.units.get(i).id)) {
+                product.units.remove(i);
+                persist();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public synchronized boolean removeProduct(String productId) {
+        for (int i = 0; i < products.size(); i++) {
+            if (products.get(i).id.equals(productId)) {
+                products.remove(i);
+                persist();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public synchronized void resetInventory() {
+        customCategories.clear();
+        products.clear();
+        unitCounter = 1;
+        seedProducts();
+        persist();
+    }
+
+    private void loadFromStorage() {
+        if (prefs == null) {
+            seedProducts();
+            return;
+        }
+
+        expiryWarningDays = prefs.getInt(KEY_EXPIRY_DAYS, expiryWarningDays);
+
+        String customJson = prefs.getString(KEY_CUSTOM_CATEGORIES, null);
+        if (customJson != null) {
+            loadCustomCategories(customJson);
+        }
+
+        String productsJson = prefs.getString(KEY_PRODUCTS, null);
+        if (productsJson != null) {
+            loadProducts(productsJson);
+        } else {
+            seedProducts();
+        }
+
+        if (prefs.contains(KEY_UNIT_COUNTER)) {
+            unitCounter = prefs.getInt(KEY_UNIT_COUNTER, unitCounter);
+        } else {
+            unitCounter = computeNextUnitCounter();
+        }
+    }
+
+    private void loadCustomCategories(String json) {
+        customCategories.clear();
+        try {
+            JSONArray array = new JSONArray(json);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject obj = array.getJSONObject(i);
+                customCategories.add(new Category(
+                        obj.optString("id"),
+                        obj.optString("name"),
+                        obj.optString("emoji"),
+                        obj.optString("bgColor"),
+                        obj.optString("textColor")
+                ));
+            }
+        } catch (JSONException ignored) {
+            customCategories.clear();
+        }
+    }
+
+    private void loadProducts(String json) {
+        products.clear();
+        try {
+            JSONArray array = new JSONArray(json);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject obj = array.getJSONObject(i);
+                List<ProductUnit> units = new ArrayList<>();
+                JSONArray unitsArray = obj.optJSONArray("units");
+                if (unitsArray != null) {
+                    for (int j = 0; j < unitsArray.length(); j++) {
+                        JSONObject unitObj = unitsArray.getJSONObject(j);
+                        units.add(new ProductUnit(
+                                unitObj.optString("id"),
+                                unitObj.optString("expiryDate")
+                        ));
+                    }
+                }
+                products.add(new Product(
+                        obj.optString("id"),
+                        obj.optString("name"),
+                        obj.optString("categoryId"),
+                        units
+                ));
+            }
+        } catch (JSONException ignored) {
+            products.clear();
+            seedProducts();
+        }
+    }
+
+    private void persist() {
+        if (prefs == null) {
+            return;
+        }
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putInt(KEY_EXPIRY_DAYS, expiryWarningDays);
+        editor.putInt(KEY_UNIT_COUNTER, unitCounter);
+        editor.putString(KEY_CUSTOM_CATEGORIES, categoriesToJson(customCategories).toString());
+        editor.putString(KEY_PRODUCTS, productsToJson(products).toString());
+        editor.apply();
+    }
+
+    private JSONArray categoriesToJson(List<Category> categories) {
+        JSONArray array = new JSONArray();
+        for (Category category : categories) {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("id", category.id);
+                obj.put("name", category.name);
+                obj.put("emoji", category.emoji);
+                obj.put("bgColor", category.bgColor);
+                obj.put("textColor", category.textColor);
+                array.put(obj);
+            } catch (JSONException ignored) {
+            }
+        }
+        return array;
+    }
+
+    private JSONArray productsToJson(List<Product> items) {
+        JSONArray array = new JSONArray();
+        for (Product product : items) {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("id", product.id);
+                obj.put("name", product.name);
+                obj.put("categoryId", product.categoryId);
+                JSONArray unitsArray = new JSONArray();
+                for (ProductUnit unit : product.units) {
+                    JSONObject unitObj = new JSONObject();
+                    unitObj.put("id", unit.id);
+                    unitObj.put("expiryDate", unit.expiryDate);
+                    unitsArray.put(unitObj);
+                }
+                obj.put("units", unitsArray);
+                array.put(obj);
+            } catch (JSONException ignored) {
+            }
+        }
+        return array;
+    }
+
+    private int computeNextUnitCounter() {
+        int max = 0;
+        for (Product product : products) {
+            for (ProductUnit unit : product.units) {
+                int value = parseUnitCounterValue(unit.id);
+                if (value > max) {
+                    max = value;
+                }
+            }
+        }
+        return Math.max(1, max + 1);
     }
 
     public String getDefaultExpiryDateForNewUnit() {
         return addDaysFromToday(7);
     }
 
-    public String formatExpiryDate(String expiryDate) {
+    public synchronized String formatExpiryDate(String expiryDate) {
         Date date = parseDate(expiryDate);
         return uiDateFormat.format(date);
     }
 
-    public ExpiryStatus getExpiryStatus(String expiryDate) {
+    public synchronized ExpiryStatus getExpiryStatus(String expiryDate) {
         Date today = startOfDay(new Date());
         Date expiry = startOfDay(parseDate(expiryDate));
         long diffDays = (expiry.getTime() - today.getTime()) / 86400000L;
@@ -154,11 +416,11 @@ public final class AppRepository {
         return ExpiryStatus.FRESH;
     }
 
-    public String toApiDate(Date date) {
+    public synchronized String toApiDate(Date date) {
         return apiDateFormat.format(date);
     }
 
-    public Date parseApiDate(String value) {
+    public synchronized Date parseApiDate(String value) {
         return parseDate(value);
     }
 
@@ -172,43 +434,65 @@ public final class AppRepository {
         baseCategories.add(new Category("condiments", "Соусы и специи", "🧂", "#EDD5F5", "#6A2A82"));
         baseCategories.add(new Category("beverages", "Напитки", "🧃", "#D5F5E3", "#1A6A40"));
         baseCategories.add(new Category("frozen", "Заморозка", "🧊", "#D5F0F5", "#1A6A7A"));
-        baseCategories.add(new Category("other", "Прочее", "📦", "#F5F0D5", "#6A5A10"));
+        baseCategories.add(new Category(OTHER_CATEGORY_ID, "Прочее", "📦", "#F5F0D5", "#6A5A10"));
     }
 
     private void seedProducts() {
-        products.add(new Product("p1", "Помидоры", "vegetables", units(3, -1)));
-        products.add(new Product("p2", "Огурцы", "vegetables", units(7)));
-        products.add(new Product("p3", "Морковь", "vegetables", units(14, 14)));
-        products.add(new Product("p4", "Лук репчатый", "vegetables", units(30)));
-        products.add(new Product("p5", "Перец болгарский", "vegetables", units(5)));
-        products.add(new Product("p6", "Чеснок", "vegetables", units(60)));
-        products.add(new Product("p7", "Шпинат", "vegetables", new ArrayList<>()));
-        products.add(new Product("p8", "Брокколи", "vegetables", new ArrayList<>()));
-        products.add(new Product("p9", "Яблоки", "fruits", units(10, 10)));
-        products.add(new Product("p10", "Бананы", "fruits", units(2)));
-        products.add(new Product("p11", "Лимон", "fruits", units(15)));
-        products.add(new Product("p12", "Курица", "meat", units(3)));
-        products.add(new Product("p13", "Говядина", "meat", units(-2)));
-        products.add(new Product("p14", "Свинина", "meat", new ArrayList<>()));
-        products.add(new Product("p15", "Молоко", "dairy", units(5)));
-        products.add(new Product("p16", "Яйца", "dairy", units(21, 21)));
-        products.add(new Product("p17", "Сыр", "dairy", units(14)));
-        products.add(new Product("p18", "Сметана", "dairy", units(7)));
-        products.add(new Product("p19", "Макароны", "grains", units(180)));
-        products.add(new Product("p20", "Рис", "grains", units(365)));
-        products.add(new Product("p21", "Гречка", "grains", units(270)));
-        products.add(new Product("p22", "Лосось", "seafood", units(2)));
-        products.add(new Product("p23", "Оливковое масло", "condiments", units(180)));
-        products.add(new Product("p24", "Томатная паста", "condiments", units(90)));
-        products.add(new Product("p25", "Базилик свежий", "condiments", units(4)));
     }
 
-    private List<ProductUnit> units(int... days) {
-        List<ProductUnit> result = new ArrayList<>();
-        for (int day : days) {
-            result.add(new ProductUnit(newUnitId(), addDaysFromToday(day)));
+    private Category findCategoryInternal(String categoryId) {
+        if (categoryId == null) {
+            return null;
         }
-        return result;
+        for (Category category : baseCategories) {
+            if (category.id.equals(categoryId)) {
+                return category;
+            }
+        }
+        for (Category category : customCategories) {
+            if (category.id.equals(categoryId)) {
+                return category;
+            }
+        }
+        return null;
+    }
+
+    private Product findProductInternalById(String productId) {
+        if (productId == null) {
+            return null;
+        }
+        for (Product product : products) {
+            if (product.id.equals(productId)) {
+                return product;
+            }
+        }
+        return null;
+    }
+
+    private Product findProductInternalByName(String categoryId, String productName) {
+        if (categoryId == null || productName == null) {
+            return null;
+        }
+        for (Product product : products) {
+            if (product.categoryId.equals(categoryId) && product.name.equalsIgnoreCase(productName)) {
+                return product;
+            }
+        }
+        return null;
+    }
+
+    private int parseUnitCounterValue(String unitId) {
+        String id = unitId == null ? "" : unitId;
+        int value = 0;
+        int idx = id.startsWith("u") ? 1 : 0;
+        for (int i = idx; i < id.length(); i++) {
+            char c = id.charAt(i);
+            if (!Character.isDigit(c)) {
+                return 0;
+            }
+            value = value * 10 + (c - '0');
+        }
+        return value;
     }
 
     private String addDaysFromToday(int days) {

@@ -1,5 +1,6 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:fillViewport="true">
@@ -43,7 +44,7 @@
                 android:contentDescription="@string/close"
                 android:padding="8dp"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
-                android:tint="@color/text_muted" />
+                app:tint="@color/text_muted" />
         </LinearLayout>
 
         <TextView
@@ -78,12 +79,28 @@
             android:textSize="11sp"
             android:textStyle="bold" />
 
+    <EditText
+        android:id="@+id/input_category_emoji"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_section_card"
+        android:hint="@string/emoji_placeholder"
+        android:imeOptions="actionDone"
+        android:inputType="textShortMessage"
+        android:singleLine="true"
+        android:minHeight="48dp"
+        android:padding="12dp"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_secondary" />
+
         <GridLayout
             android:id="@+id/grid_emoji"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:columnCount="5" />
+            android:columnCount="5"
+            android:visibility="gone" />
 
         <TextView
             android:layout_width="match_parent"
@@ -94,12 +111,19 @@
             android:textSize="11sp"
             android:textStyle="bold" />
 
-        <GridLayout
-            android:id="@+id/grid_colors"
+        <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:columnCount="8" />
+            android:overScrollMode="never"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/layout_colors"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -120,7 +144,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:gravity="center"
-                    android:text="🥗"
+                    android:text="@string/emoji_placeholder"
                     android:textSize="24sp" />
             </FrameLayout>
 
@@ -155,11 +179,14 @@
             android:layout_height="54dp"
             android:layout_marginTop="20dp"
             android:background="@drawable/bg_fab_green"
+            android:backgroundTint="@null"
             android:text="@string/create_category"
             android:textAllCaps="false"
             android:textColor="@color/white"
             android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            app:backgroundTint="@null" />
 
     </LinearLayout>
 </ScrollView>
+

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -9,12 +9,17 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <ScrollView
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh_main"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:clipToPadding="false"
-        android:fillViewport="true"
-        android:scrollbarStyle="outsideOverlay">
+        android:layout_height="match_parent">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:scrollbarStyle="outsideOverlay">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -43,8 +48,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/text_secondary"
-                        android:textSize="12sp"
-                        tools:text="Добрый вечер! 🍂" />
+                        android:textSize="13sp"
+                        tools:text="Добрый вечер! 🌆" />
 
                     <TextView
                         android:id="@+id/tv_title"
@@ -52,10 +57,10 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:fontFamily="sans-serif-black"
-                        android:letterSpacing="-0.02"
                         android:text="@string/home_title"
                         android:textColor="@color/text_primary"
-                        android:textSize="36px" />
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <ImageButton
@@ -63,17 +68,12 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="@drawable/bg_settings_button"
-                    android:contentDescription="Настройки"
-                    android:elevation="2dp"
-                    android:padding="10dp"
-                    android:src="@android:drawable/ic_menu_manage"
-                    android:tint="@color/text_muted" />
+                    android:contentDescription="@string/settings_title"
+                    android:elevation="0dp"
+                    android:padding="9dp"
+                    android:src="@android:drawable/ic_menu_preferences"
+                    app:tint="@color/text_muted" />
             </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#0D000000" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -88,7 +88,7 @@
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_alert_card_red"
                     android:orientation="vertical"
-                    android:padding="12dp">
+                    android:padding="14dp">
 
                     <LinearLayout
                         android:id="@+id/alert_fresh_content"
@@ -103,7 +103,7 @@
                             android:layout_height="44dp"
                             android:background="#B3FFFFFF"
                             android:gravity="center"
-                            android:text="🌿"
+                            android:text="@string/home_fresh_icon"
                             android:textSize="24sp" />
 
                         <LinearLayout
@@ -145,8 +145,8 @@
 
                             <FrameLayout
                                 android:id="@+id/alert_icon_container"
-                                android:layout_width="34dp"
-                                android:layout_height="34dp"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
                                 android:background="@drawable/bg_alert_icon_red">
 
                                 <ImageView
@@ -154,7 +154,7 @@
                                     android:layout_height="18dp"
                                     android:layout_gravity="center"
                                     android:src="@android:drawable/ic_dialog_alert"
-                                    android:tint="@color/alert_red" />
+                                    app:tint="@color/alert_red" />
                             </FrameLayout>
 
                             <LinearLayout
@@ -170,7 +170,7 @@
                                     android:layout_height="wrap_content"
                                     android:fontFamily="sans-serif-medium"
                                     android:textColor="@color/alert_red"
-                                    android:textSize="13sp"
+                                    android:textSize="14sp"
                                     tools:text="2 просрочено, 3 скоро истекает" />
 
                                 <TextView
@@ -186,17 +186,23 @@
                             <Button
                                 android:id="@+id/btn_to_products"
                                 android:layout_width="wrap_content"
-                                android:layout_height="30dp"
-                                android:background="@drawable/bg_alert_chip"
+                                android:layout_height="28dp"
+                                android:background="@drawable/bg_alert_button"
+                                android:backgroundTint="@null"
                                 android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:includeFontPadding="false"
                                 android:minHeight="0dp"
                                 android:minWidth="0dp"
-                                android:paddingStart="10dp"
-                                android:paddingEnd="10dp"
+                                android:paddingStart="12dp"
+                                android:paddingEnd="12dp"
+                                android:paddingTop="0dp"
+                                android:paddingBottom="0dp"
+                                app:backgroundTint="@null"
                                 android:text="@string/home_to_list"
                                 android:textAllCaps="false"
                                 android:textColor="@color/text_muted"
-                                android:textSize="11sp" />
+                                android:textSize="12sp" />
                         </LinearLayout>
 
                         <LinearLayout
@@ -204,6 +210,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
                             android:orientation="vertical" />
 
                         <TextView
@@ -214,7 +221,7 @@
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
                             android:visibility="gone"
-                            tools:text="и ещё 1 продукт(а)..." />
+                            tools:text="И ещё 1 продукта(а)..." />
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
@@ -237,30 +244,30 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="✧"
+                        android:text="@string/home_recipe_icon"
                         android:textColor="@color/section_orange"
-                        android:textSize="14sp" />
+                        android:textSize="13sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="6dp"
                         android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.05"
                         android:text="@string/home_recipe_of_day"
                         android:textColor="@color/section_orange"
-                        android:textSize="13sp" />
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/recipe_card"
                     android:layout_width="match_parent"
-                    android:layout_height="200dp"
+                    android:layout_height="180dp"
                     android:layout_marginTop="10dp"
                     android:clickable="true"
                     android:focusable="true"
                     app:cardCornerRadius="24dp"
-                    app:cardElevation="6dp"
+                    app:cardElevation="0dp"
                     app:rippleColor="#1AFFFFFF">
 
                     <FrameLayout
@@ -325,7 +332,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="sans-serif-black"
                                 android:textColor="@color/white"
-                                android:textSize="34px"
+                                android:textSize="18sp"
                                 tools:text="Паста с томатным соусом" />
 
                             <LinearLayout
@@ -341,14 +348,14 @@
                                     android:layout_height="wrap_content"
                                     android:textColor="#CCFFFFFF"
                                     android:textSize="12sp"
-                                    tools:text="🍴 Итальянская" />
+                                tools:text="🍴 Итальянская" />
 
                                 <ImageView
                                     android:layout_width="14dp"
                                     android:layout_height="14dp"
                                     android:layout_marginStart="12dp"
                                     android:src="@android:drawable/ic_lock_idle_alarm"
-                                    android:tint="#CCFFFFFF" />
+                                    app:tint="#CCFFFFFF" />
 
                                 <TextView
                                     android:id="@+id/tv_recipe_time"
@@ -386,13 +393,12 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_section_card"
                     android:clickable="true"
                     android:focusable="true"
+                    app:cardBackgroundColor="@color/white"
                     app:cardCornerRadius="20dp"
-                    app:cardElevation="2dp"
-                    app:strokeColor="#0F000000"
-                    app:strokeWidth="1dp">
+                    app:cardElevation="0dp"
+                    app:cardUseCompatPadding="false">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -407,11 +413,11 @@
                             android:background="@drawable/bg_section_icon_green">
 
                             <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
                                 android:layout_gravity="center"
-                                android:src="@android:drawable/ic_menu_agenda"
-                                android:tint="@color/section_green" />
+                                android:src="@drawable/ic_section_products"
+                                app:tint="@color/section_green" />
                         </FrameLayout>
 
                         <LinearLayout
@@ -435,7 +441,7 @@
                                 android:layout_marginTop="2dp"
                                 android:text="@string/section_products_desc"
                                 android:textColor="@color/text_secondary"
-                                android:textSize="12sp" />
+                                android:textSize="13sp" />
                         </LinearLayout>
 
                         <FrameLayout
@@ -456,14 +462,13 @@
                     android:id="@+id/card_recipes"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/bg_section_card"
+                    android:layout_marginTop="8dp"
                     android:clickable="true"
                     android:focusable="true"
+                    app:cardBackgroundColor="@color/white"
                     app:cardCornerRadius="20dp"
-                    app:cardElevation="2dp"
-                    app:strokeColor="#0F000000"
-                    app:strokeWidth="1dp">
+                    app:cardElevation="0dp"
+                    app:cardUseCompatPadding="false">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -478,11 +483,11 @@
                             android:background="@drawable/bg_section_icon_orange">
 
                             <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
                                 android:layout_gravity="center"
-                                android:src="@android:drawable/ic_menu_edit"
-                                android:tint="@color/section_orange" />
+                                android:src="@drawable/ic_section_recipes"
+                                app:tint="@color/section_orange" />
                         </FrameLayout>
 
                         <LinearLayout
@@ -506,7 +511,7 @@
                                 android:layout_marginTop="2dp"
                                 android:text="@string/section_recipes_desc"
                                 android:textColor="@color/text_secondary"
-                                android:textSize="12sp" />
+                                android:textSize="13sp" />
                         </LinearLayout>
 
                         <FrameLayout
@@ -527,14 +532,14 @@
                     android:id="@+id/card_shopping"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/bg_section_card"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
                     android:clickable="true"
                     android:focusable="true"
+                    app:cardBackgroundColor="@color/white"
                     app:cardCornerRadius="20dp"
-                    app:cardElevation="2dp"
-                    app:strokeColor="#0F000000"
-                    app:strokeWidth="1dp">
+                    app:cardElevation="0dp"
+                    app:cardUseCompatPadding="false">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -549,11 +554,11 @@
                             android:background="@drawable/bg_section_icon_purple">
 
                             <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
                                 android:layout_gravity="center"
-                                android:src="@android:drawable/ic_menu_share"
-                                android:tint="@color/section_purple" />
+                                android:src="@drawable/ic_section_shopping"
+                                app:tint="@color/section_purple" />
                         </FrameLayout>
 
                         <LinearLayout
@@ -577,7 +582,7 @@
                                 android:layout_marginTop="2dp"
                                 android:text="@string/section_shopping_desc"
                                 android:textColor="@color/text_secondary"
-                                android:textSize="12sp" />
+                                android:textSize="13sp" />
                         </LinearLayout>
 
                         <FrameLayout
@@ -595,6 +600,14 @@
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
         </LinearLayout>
-    </ScrollView>
+        </ScrollView>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </LinearLayout>
+
+
+
+
+
+
+

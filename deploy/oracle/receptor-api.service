@@ -1,0 +1,20 @@
+[Unit]
+Description=Receptor API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/receptor/server
+Environment=PORT=8080
+Environment=PGHOST=localhost
+Environment=PGPORT=5432
+Environment=PGUSER=postgres
+Environment=PGPASSWORD=q1w2e3
+Environment=PGDATABASE=receptor
+ExecStart=/usr/bin/node /home/ubuntu/receptor/server/src/index.js
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

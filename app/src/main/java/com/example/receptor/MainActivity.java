@@ -16,13 +16,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.bumptech.glide.Glide;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -30,12 +30,11 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int EXPIRY_WARNING_DAYS = 3;
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
-    private final List<Product> products = new ArrayList<>();
-    private final List<Recipe> recipes = new ArrayList<>();
-    private int unitCounter = 1;
+    private AppRepository repository;
+    private final List<AppRepository.Product> products = new ArrayList<>();
+    private final List<RecipeStore.Recipe> recipes = new ArrayList<>();
 
     private TextView greetingView;
     private TextView alertSummaryView;
@@ -61,8 +60,9 @@ public class MainActivity extends AppCompatActivity {
     private View productsCard;
     private View recipesCard;
     private View shoppingCard;
+    private SwipeRefreshLayout swipeRefresh;
 
-    private Recipe dayRecipe;
+    private RecipeStore.Recipe dayRecipe;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,16 +73,26 @@ public class MainActivity extends AppCompatActivity {
         applyInsets();
         bindViews();
 
-        products.addAll(createInitialProducts());
-        recipes.addAll(createInitialRecipes());
+        repository = AppRepository.getInstance(this);
 
-        greetingView.setText(buildGreeting());
-        renderExpiryWidget(buildAlertItems(products, EXPIRY_WARNING_DAYS));
+        refreshHomeData();
 
-        dayRecipe = pickRecipeOfDay(recipes, products);
-        renderRecipeOfDay(dayRecipe);
+        ExpiryNotificationWorker.schedule(this);
 
         bindClicks();
+
+        if (swipeRefresh != null) {
+            swipeRefresh.setOnRefreshListener(() -> {
+                refreshHomeData();
+                swipeRefresh.setRefreshing(false);
+            });
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        refreshHomeData();
     }
 
     private void applyInsets() {
@@ -117,26 +127,54 @@ public class MainActivity extends AppCompatActivity {
         productsCard = findViewById(R.id.card_products);
         recipesCard = findViewById(R.id.card_recipes);
         shoppingCard = findViewById(R.id.card_shopping);
+        swipeRefresh = findViewById(R.id.swipe_refresh_main);
     }
 
     private void bindClicks() {
-        settingsButton.setOnClickListener(v -> openPlaceholder("Настройки", getString(R.string.placeholder_note)));
+        settingsButton.setOnClickListener(v -> openSettingsScreen());
         alertToProductsButton.setOnClickListener(v -> openProductsScreen());
+        if (alertCardContainer != null) {
+            alertCardContainer.setOnClickListener(v -> openProductsScreen());
+        }
 
         productsCard.setOnClickListener(v -> openProductsScreen());
-        recipesCard.setOnClickListener(v -> openPlaceholder("Рецепты", getString(R.string.placeholder_note)));
-        shoppingCard.setOnClickListener(v -> openPlaceholder("Список покупок", getString(R.string.placeholder_note)));
+        recipesCard.setOnClickListener(v -> openRecipesScreen());
+        shoppingCard.setOnClickListener(v -> openShoppingList());
 
         recipeCard.setOnClickListener(v -> {
             if (dayRecipe == null) {
                 return;
             }
-            openPlaceholder(dayRecipe.name, "Откроем полноценный экран рецепта на следующем шаге.");
+            openRecipeDetails(dayRecipe);
         });
     }
 
     private void openProductsScreen() {
         startActivity(new Intent(this, ProductCategoriesActivity.class));
+    }
+
+    private void openRecipesScreen() {
+        startActivity(new Intent(this, RecipesActivity.class));
+    }
+
+    private void openShoppingList() {
+        startActivity(new Intent(this, ShoppingListActivity.class));
+    }
+
+    private void openSettingsScreen() {
+        startActivity(new Intent(this, SettingsActivity.class));
+    }
+
+    private void openRecipeDetails(RecipeStore.Recipe recipe) {
+        Intent intent = new Intent(this, RecipeDetailActivity.class);
+        intent.putExtra(RecipeDetailActivity.EXTRA_ID, recipe.id);
+        intent.putExtra(RecipeDetailActivity.EXTRA_TITLE, recipe.title);
+        intent.putExtra(RecipeDetailActivity.EXTRA_IMAGE_URL, recipe.imageUrl);
+        intent.putExtra(RecipeDetailActivity.EXTRA_CUISINE, recipe.cuisine);
+        intent.putExtra(RecipeDetailActivity.EXTRA_TYPE, recipe.type);
+        intent.putExtra(RecipeDetailActivity.EXTRA_TIME, recipe.timeMinutes);
+        intent.putExtra(RecipeDetailActivity.EXTRA_MATCH, recipe.matchPercent);
+        startActivity(intent);
     }
 
     private void openPlaceholder(String title, String note) {
@@ -146,22 +184,98 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    private void renderRecipeOfDay(Recipe recipe) {
+    private void refreshHomeData() {
+        greetingView.setText(buildGreeting());
+        int warningDays = UserPreferences.getExpiryWarningDays(this, repository.getExpiryWarningDays());
+        repository.setExpiryWarningDays(warningDays);
+        loadRemoteProducts(warningDays);
+        loadRemoteRecipes();
+    }
+
+    private void loadRemoteProducts(int warningDays) {
+        DataClient.fetchAllProducts(new DataClient.Callback<List<AppRepository.Product>>() {
+            @Override
+            public void onSuccess(List<AppRepository.Product> data) {
+                products.clear();
+                if (data != null) {
+                    products.addAll(data);
+                }
+                renderExpiryWidget(buildAlertItems(products, warningDays));
+                updateRecipeOfDay();
+            }
+
+            @Override
+            public void onError(Exception error) {
+                products.clear();
+                renderExpiryWidget(buildAlertItems(products, warningDays));
+                updateRecipeOfDay();
+            }
+        });
+    }
+
+    private void loadRemoteRecipes() {
+        DataClient.fetchRecipes(new DataClient.Callback<List<RecipeStore.Recipe>>() {
+            @Override
+            public void onSuccess(List<RecipeStore.Recipe> data) {
+                recipes.clear();
+                if (data != null) {
+                    recipes.addAll(data);
+                }
+                updateRecipeOfDay();
+            }
+
+            @Override
+            public void onError(Exception error) {
+                recipes.clear();
+                updateRecipeOfDay();
+            }
+        });
+    }
+
+    private void updateRecipeOfDay() {
+        dayRecipe = pickRecipeOfDay(recipes, products);
+        renderRecipeOfDay(dayRecipe);
+    }
+
+    private void renderRecipeOfDay(RecipeStore.Recipe recipe) {
         if (recipe == null) {
-            recipeSectionContainer.setVisibility(View.GONE);
+            recipeSectionContainer.setVisibility(View.VISIBLE);
+            recipeMatchView.setText(getString(R.string.recipe_match_placeholder));
+            recipeNameView.setText(getString(R.string.home_recipe_placeholder_title));
+            recipeCuisineView.setText(getString(R.string.home_recipe_placeholder_cuisine));
+            recipeTimeView.setText(getString(R.string.home_recipe_placeholder_time));
+            recipeCard.setClickable(false);
+            recipeCard.setFocusable(false);
+            Glide.with(this)
+                    .load(R.drawable.ic_section_recipes)
+                    .centerCrop()
+                    .into(recipeImageView);
             return;
         }
 
         recipeSectionContainer.setVisibility(View.VISIBLE);
-        recipeMatchView.setText(recipe.matchPercent + "%");
-        recipeNameView.setText(recipe.name);
-        recipeCuisineView.setText("🍴 " + recipe.cuisine);
-        recipeTimeView.setText(recipe.timeMinutes + " " + getString(R.string.home_min_suffix));
+        recipeMatchView.setText(getString(R.string.recipe_match_pct, recipe.matchPercent));
+        recipeNameView.setText(recipe.title);
+        String dishType = recipe.type == null ? "" : recipe.type;
+        String cuisine = recipe.cuisine == null ? "" : recipe.cuisine;
+        String subtitle = !dishType.trim().isEmpty() ? dishType : cuisine;
+        recipeCuisineView.setText(getString(R.string.home_recipe_cuisine, subtitle));
+        recipeTimeView.setText(getString(R.string.recipe_time_short, recipe.timeMinutes));
+        recipeCard.setClickable(true);
+        recipeCard.setFocusable(true);
 
+        int placeholder = RecipeUi.getPlaceholderResId(recipe.type);
+        String imageUrl = recipe.imageUrl;
+        recipeImageView.setImageResource(placeholder);
+        recipeImageView.setTag(recipe.id);
         Glide.with(this)
-                .load(recipe.imageUrl)
+                .load(imageUrl)
+                .placeholder(placeholder)
+                .error(placeholder)
                 .centerCrop()
                 .into(recipeImageView);
+
+        // No external image API: use provided imageUrl or placeholders only.
     }
 
     private void renderExpiryWidget(List<AlertItem> alertItems) {
@@ -188,17 +302,17 @@ public class MainActivity extends AppCompatActivity {
         boolean hasExpired = expiredCount > 0;
         alertCardContainer.setBackgroundResource(hasExpired ? R.drawable.bg_alert_card_red : R.drawable.bg_alert_card_yellow);
         alertIconContainer.setBackgroundResource(hasExpired ? R.drawable.bg_alert_icon_red : R.drawable.bg_alert_icon_yellow);
-        alertSummaryView.setTextColor(getColorCompat(hasExpired ? R.color.alert_red : R.color.alert_yellow));
+        alertSummaryView.setTextColor(Ui.color(this, hasExpired ? R.color.alert_red : R.color.alert_yellow));
 
         StringBuilder summary = new StringBuilder();
         if (expiredCount > 0) {
-            summary.append(expiredCount).append(" просрочено");
+            summary.append(getString(R.string.alert_summary_expired, expiredCount));
         }
         if (expiredCount > 0 && expiringCount > 0) {
             summary.append(", ");
         }
         if (expiringCount > 0) {
-            summary.append(expiringCount).append(" скоро истекает");
+            summary.append(getString(R.string.alert_summary_expiring, expiringCount));
         }
         alertSummaryView.setText(summary.toString());
 
@@ -210,7 +324,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (alertItems.size() > 4) {
             int moreCount = alertItems.size() - 4;
-            alertMoreView.setText("и ещё " + moreCount + " продукт(а)...");
+            alertMoreView.setText(getString(R.string.alert_more_count, moreCount));
             alertMoreView.setVisibility(View.VISIBLE);
         } else {
             alertMoreView.setVisibility(View.GONE);
@@ -221,7 +335,7 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBackgroundResource(R.drawable.bg_alert_row);
-        row.setPadding(dp(12), dp(8), dp(12), dp(8));
+        row.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 8));
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
 
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
@@ -229,13 +343,13 @@ public class MainActivity extends AppCompatActivity {
                 LinearLayout.LayoutParams.WRAP_CONTENT
         );
         if (withTopMargin) {
-            rowParams.topMargin = dp(5);
+            rowParams.topMargin = Ui.dp(this, 5);
         }
         row.setLayoutParams(rowParams);
 
         View dot = new View(this);
-        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(10), dp(10));
-        dotParams.rightMargin = dp(10);
+        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(Ui.dp(this, 10), Ui.dp(this, 10));
+        dotParams.rightMargin = Ui.dp(this, 10);
         dot.setLayoutParams(dotParams);
         dot.setBackgroundResource(item.status == ExpiryStatus.EXPIRED
                 ? R.drawable.bg_status_dot_red
@@ -245,20 +359,22 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         productName.setLayoutParams(nameParams);
         productName.setText(item.product.name);
-        productName.setTextColor(getColorCompat(R.color.text_primary));
+        productName.setTextColor(Ui.color(this, R.color.text_primary));
         productName.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         productName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
 
         TextView statusText = new TextView(this);
-        statusText.setTextColor(getColorCompat(item.status == ExpiryStatus.EXPIRED ? R.color.alert_red : R.color.alert_yellow));
+        statusText.setTextColor(Ui.color(this, item.status == ExpiryStatus.EXPIRED ? R.color.alert_red : R.color.alert_yellow));
         statusText.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         statusText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
 
         long diffDays = daysBetweenToday(item.expiryDate);
         if (item.status == ExpiryStatus.EXPIRED) {
-            statusText.setText("просрочен " + Math.abs(diffDays) + " дн.");
+            statusText.setText(getString(R.string.alert_status_expired, Math.abs(diffDays)));
+        } else if (diffDays == 0) {
+            statusText.setText(getString(R.string.alert_status_today));
         } else {
-            statusText.setText(diffDays == 0 ? "сегодня" : diffDays + " дн.");
+            statusText.setText(getString(R.string.alert_status_days, diffDays));
         }
 
         row.addView(dot);
@@ -271,29 +387,32 @@ public class MainActivity extends AppCompatActivity {
     private String buildGreeting() {
         int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         if (hour < 6) {
-            return "Доброй ночи! 🌙";
+            return getString(R.string.greeting_night);
         }
         if (hour < 12) {
-            return "Доброе утро! ☀️";
+            return getString(R.string.greeting_morning);
         }
         if (hour < 17) {
-            return "Добрый день! 🌿";
+            return getString(R.string.greeting_day);
         }
         if (hour < 21) {
-            return "Добрый вечер! 🍂";
+            return getString(R.string.greeting_evening);
         }
-        return "Доброй ночи! 🌙";
+        return getString(R.string.greeting_night);
     }
 
-    private Recipe pickRecipeOfDay(List<Recipe> recipeList, List<Product> productList) {
+    private RecipeStore.Recipe pickRecipeOfDay(List<RecipeStore.Recipe> recipeList, List<AppRepository.Product> productList) {
         if (recipeList.isEmpty()) {
             return null;
         }
 
-        Recipe best = null;
+        RecipeStore.Recipe best = null;
         int bestMatch = -1;
 
-        for (Recipe recipe : recipeList) {
+        for (RecipeStore.Recipe recipe : recipeList) {
+            if (recipe.ingredients == null || recipe.ingredients.size() < 2) {
+                continue;
+            }
             int match = calculateMatchPercentage(recipe, productList);
             if (match > bestMatch) {
                 best = recipe;
@@ -301,15 +420,16 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        if (best != null) {
+        if (best != null && bestMatch > 0) {
             best.matchPercent = bestMatch;
+            return best;
         }
-        return best;
+        return null;
     }
 
-    private int calculateMatchPercentage(Recipe recipe, List<Product> productList) {
+    private int calculateMatchPercentage(RecipeStore.Recipe recipe, List<AppRepository.Product> productList) {
         List<String> availableNames = new ArrayList<>();
-        for (Product product : productList) {
+        for (AppRepository.Product product : productList) {
             if (!product.units.isEmpty()) {
                 availableNames.add(product.name.toLowerCase(Locale.ROOT));
             }
@@ -321,8 +441,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         int matched = 0;
-        for (String ingredient : recipe.ingredients) {
-            String ingredientName = ingredient.toLowerCase(Locale.ROOT);
+        for (RecipeStore.Ingredient ingredient : recipe.ingredients) {
+            if (ingredient == null || ingredient.name == null) {
+                continue;
+            }
+            String ingredientName = ingredient.name.toLowerCase(Locale.ROOT);
             boolean hasMatch = false;
             for (String productName : availableNames) {
                 if (productName.contains(ingredientName) || ingredientName.contains(productName)) {
@@ -338,16 +461,16 @@ public class MainActivity extends AppCompatActivity {
         return Math.round((matched * 100f) / total);
     }
 
-    private List<AlertItem> buildAlertItems(List<Product> productList, int warningDays) {
+    private List<AlertItem> buildAlertItems(List<AppRepository.Product> productList, int warningDays) {
         List<AlertItem> alertItems = new ArrayList<>();
 
-        for (Product product : productList) {
+        for (AppRepository.Product product : productList) {
             if (product.units.isEmpty()) {
                 continue;
             }
 
             ExpiryStatus worstStatus = ExpiryStatus.FRESH;
-            for (ProductUnit unit : product.units) {
+            for (AppRepository.ProductUnit unit : product.units) {
                 ExpiryStatus status = getExpiryStatus(unit.expiryDate, warningDays);
                 if (status == ExpiryStatus.EXPIRED) {
                     worstStatus = ExpiryStatus.EXPIRED;
@@ -363,7 +486,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             String worstExpiryDate = "";
-            for (ProductUnit unit : product.units) {
+            for (AppRepository.ProductUnit unit : product.units) {
                 if (getExpiryStatus(unit.expiryDate, warningDays) == worstStatus) {
                     worstExpiryDate = unit.expiryDate;
                     break;
@@ -423,142 +546,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private String addDaysFromToday(int days) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.DAY_OF_YEAR, days);
-        return DATE_FORMAT.format(calendar.getTime());
-    }
-
-    private List<ProductUnit> units(int... days) {
-        List<ProductUnit> list = new ArrayList<>();
-        for (int day : days) {
-            list.add(new ProductUnit("u" + unitCounter++, addDaysFromToday(day)));
-        }
-        return list;
-    }
-
-    private List<Product> createInitialProducts() {
-        List<Product> list = new ArrayList<>();
-
-        list.add(new Product("p1", "Помидоры", "vegetables", units(3, -1)));
-        list.add(new Product("p2", "Огурцы", "vegetables", units(7)));
-        list.add(new Product("p3", "Морковь", "vegetables", units(14, 14)));
-        list.add(new Product("p4", "Лук репчатый", "vegetables", units(30)));
-        list.add(new Product("p5", "Перец болгарский", "vegetables", units(5)));
-        list.add(new Product("p6", "Чеснок", "vegetables", units(60)));
-        list.add(new Product("p7", "Шпинат", "vegetables", new ArrayList<>()));
-        list.add(new Product("p8", "Брокколи", "vegetables", new ArrayList<>()));
-        list.add(new Product("p9", "Яблоки", "fruits", units(10, 10)));
-        list.add(new Product("p10", "Бананы", "fruits", units(2)));
-        list.add(new Product("p11", "Лимон", "fruits", units(15)));
-        list.add(new Product("p12", "Курица", "meat", units(3)));
-        list.add(new Product("p13", "Говядина", "meat", units(-2)));
-        list.add(new Product("p14", "Свинина", "meat", new ArrayList<>()));
-        list.add(new Product("p15", "Молоко", "dairy", units(5)));
-        list.add(new Product("p16", "Яйца", "dairy", units(21, 21)));
-        list.add(new Product("p17", "Сыр", "dairy", units(14)));
-        list.add(new Product("p18", "Сметана", "dairy", units(7)));
-        list.add(new Product("p19", "Макароны", "grains", units(180)));
-        list.add(new Product("p20", "Рис", "grains", units(365)));
-        list.add(new Product("p21", "Гречка", "grains", units(270)));
-        list.add(new Product("p22", "Лосось", "seafood", units(2)));
-        list.add(new Product("p23", "Оливковое масло", "condiments", units(180)));
-        list.add(new Product("p24", "Томатная паста", "condiments", units(90)));
-        list.add(new Product("p25", "Базилик свежий", "condiments", units(4)));
-
-        return list;
-    }
-
-    private List<Recipe> createInitialRecipes() {
-        String pastaImage = "https://images.unsplash.com/photo-1768204037592-92308f35120c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwYXN0YSUyMGNhcmJvbmFyYSUyMGNvenklMjBkaW5uZXJ8ZW58MXx8fHwxNzcxOTU3MTkyfDA&ixlib=rb-4.1.0&q=80&w=1080";
-        String soupImage = "https://images.unsplash.com/photo-1625940947631-908aa92ef5e7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2ZWdldGFibGUlMjBzb3VwJTIwaG9tZW1hZGUlMjB3YXJtfGVufDF8fHx8MTc3MTk1NzE5NXww&ixlib=rb-4.1.0&q=80&w=1080";
-        String avocadoImage = "https://images.unsplash.com/photo-1623691751128-ade6f7e59003?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhdm9jYWRvJTIwdG9hc3QlMjBicmVha2Zhc3QlMjBoZWFsdGh5fGVufDF8fHx8MTc3MTkzNjQ4NHww&ixlib=rb-4.1.0&q=80&w=1080";
-        String saladImage = "https://images.unsplash.com/photo-1769481614068-47cfb4d1f125?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxncmVlayUyMHNhbGFkJTIwZnJlc2glMjBtZWRpdGVycmFuZWFufGVufDF8fHx8MTc3MTk1NzE5OHww&ixlib=rb-4.1.0&q=80&w=1080";
-        String smoothieImage = "https://images.unsplash.com/photo-1662611284583-f34180194370?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaGlja2VuJTIwc3RpciUyMGZyeSUyMHZlZ2V0YWJsZXMlMjB3b2t8ZW58MXx8fHwxNzcxODYwNTkwfDA&ixlib=rb-4.1.0&q=80&w=1080";
-
-        List<Recipe> list = new ArrayList<>();
-        list.add(new Recipe("r1", "Паста с томатным соусом", pastaImage, "Итальянская", 25,
-                Arrays.asList("Макароны", "Помидоры", "Томатная паста", "Чеснок", "Оливковое масло", "Базилик свежий")));
-        list.add(new Recipe("r2", "Куриный суп", soupImage, "Русская", 60,
-                Arrays.asList("Курица", "Морковь", "Лук репчатый", "Картофель", "Зелень")));
-        list.add(new Recipe("r3", "Тост с авокадо", avocadoImage, "Интернациональная", 10,
-                Arrays.asList("Хлеб цельнозерновой", "Авокадо", "Яйца", "Лимон", "Соль")));
-        list.add(new Recipe("r4", "Салат с курицей", saladImage, "Интернациональная", 20,
-                Arrays.asList("Курица", "Огурцы", "Помидоры", "Перец болгарский", "Сметана")));
-        list.add(new Recipe("r5", "Смузи-боул", smoothieImage, "Интернациональная", 10,
-                Arrays.asList("Бананы", "Яблоки", "Молоко", "Мёд", "Гречка")));
-
-        return list;
-    }
-
-    private int dp(int value) {
-        return Math.round(TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                value,
-                getResources().getDisplayMetrics()
-        ));
-    }
-
-    private int getColorCompat(int colorRes) {
-        return getResources().getColor(colorRes, getTheme());
-    }
-
     private enum ExpiryStatus {
         FRESH,
         EXPIRING,
         EXPIRED
     }
 
-    private static final class ProductUnit {
-        final String id;
-        final String expiryDate;
-
-        ProductUnit(String id, String expiryDate) {
-            this.id = id;
-            this.expiryDate = expiryDate;
-        }
-    }
-
-    private static final class Product {
-        final String id;
-        final String name;
-        final String categoryId;
-        final List<ProductUnit> units;
-
-        Product(String id, String name, String categoryId, List<ProductUnit> units) {
-            this.id = id;
-            this.name = name;
-            this.categoryId = categoryId;
-            this.units = units;
-        }
-    }
-
-    private static final class Recipe {
-        final String id;
-        final String name;
-        final String imageUrl;
-        final String cuisine;
-        final int timeMinutes;
-        final List<String> ingredients;
-        int matchPercent;
-
-        Recipe(String id, String name, String imageUrl, String cuisine, int timeMinutes, List<String> ingredients) {
-            this.id = id;
-            this.name = name;
-            this.imageUrl = imageUrl;
-            this.cuisine = cuisine;
-            this.timeMinutes = timeMinutes;
-            this.ingredients = ingredients;
-            this.matchPercent = 0;
-        }
-    }
-
     private static final class AlertItem {
-        final Product product;
+        final AppRepository.Product product;
         final ExpiryStatus status;
         final String expiryDate;
 
-        AlertItem(Product product, ExpiryStatus status, String expiryDate) {
+        AlertItem(AppRepository.Product product, ExpiryStatus status, String expiryDate) {
             this.product = product;
             this.status = status;
             this.expiryDate = expiryDate;

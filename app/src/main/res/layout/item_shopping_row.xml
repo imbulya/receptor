@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/shopping_item_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="12dp"
+    android:background="@drawable/bg_shop_item"
+    android:foreground="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="12dp">
+
+    <FrameLayout
+        android:id="@+id/shopping_check_box"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:background="@drawable/bg_checkbox_outline" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_shopping_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="Картофель" />
+
+        <TextView
+            android:id="@+id/tv_shopping_qty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text=""
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            tools:text="1 кг" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/btn_delete_item"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="@drawable/bg_delete_circle"
+        android:contentDescription="@string/remove"
+        android:padding="7dp"
+        android:src="@android:drawable/ic_menu_delete"
+        app:tint="#C04A4A" />
+</LinearLayout>

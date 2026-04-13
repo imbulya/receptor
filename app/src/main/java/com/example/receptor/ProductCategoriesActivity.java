@@ -15,6 +15,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -22,15 +23,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.card.MaterialCardView;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ProductCategoriesActivity extends AppCompatActivity {
 
-    private static final String[] EMOJI_OPTIONS = new String[]{"🥗", "🧁", "🥪", "🍜", "🥘", "🫕", "🥐", "🧆", "🍱", "🫙", "🍕", "🥩", "🧀", "🍓", "🥑"};
+    private static final String[] EMOJI_OPTIONS = new String[]{};
 
     private static final ColorOption[] COLOR_OPTIONS = new ColorOption[]{
             new ColorOption("#FDD8E0", "#9E3050"),
@@ -43,8 +46,9 @@ public class ProductCategoriesActivity extends AppCompatActivity {
             new ColorOption("#F5E8CC", "#7A5010")
     };
 
-    private AppRepository repository;
     private GridLayout categoriesGrid;
+    private SwipeRefreshLayout swipeRefresh;
+    private final List<DataClient.CategoryInfo> categories = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,18 +56,29 @@ public class ProductCategoriesActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_product_categories);
 
-        repository = AppRepository.getInstance();
-
         applyInsets();
 
         categoriesGrid = findViewById(R.id.categories_grid);
+        swipeRefresh = findViewById(R.id.swipe_refresh_categories);
         ImageButton backButton = findViewById(R.id.btn_back_categories);
         ImageButton addButton = findViewById(R.id.fab_add_category);
 
         backButton.setOnClickListener(v -> finish());
         addButton.setOnClickListener(v -> showCreateCategorySheet());
 
-        renderCategories();
+        loadCategories();
+
+        if (swipeRefresh != null) {
+            swipeRefresh.setOnRefreshListener(() -> {
+                loadCategories();
+            });
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadCategories();
     }
 
     private void applyInsets() {
@@ -75,11 +90,38 @@ public class ProductCategoriesActivity extends AppCompatActivity {
         });
     }
 
+    private void loadCategories() {
+        if (swipeRefresh != null) {
+            swipeRefresh.setRefreshing(true);
+        }
+        DataClient.fetchProductCategories(new DataClient.Callback<List<DataClient.CategoryInfo>>() {
+            @Override
+            public void onSuccess(List<DataClient.CategoryInfo> data) {
+                categories.clear();
+                if (data != null) {
+                    categories.addAll(data);
+                }
+                renderCategories();
+                if (swipeRefresh != null) {
+                    swipeRefresh.setRefreshing(false);
+                }
+            }
+
+            @Override
+            public void onError(Exception error) {
+                categories.clear();
+                renderCategories();
+                if (swipeRefresh != null) {
+                    swipeRefresh.setRefreshing(false);
+                }
+            }
+        });
+    }
+
     private void renderCategories() {
         categoriesGrid.removeAllViews();
-        List<AppRepository.Category> categories = repository.getVisibleCategories();
-
-        for (AppRepository.Category category : categories) {
+        for (DataClient.CategoryInfo info : categories) {
+            AppRepository.Category category = info.category;
             View cardView = LayoutInflater.from(this).inflate(R.layout.item_category_card, categoriesGrid, false);
             MaterialCardView card = cardView.findViewById(R.id.card_category_root);
             FrameLayout emojiBox = cardView.findViewById(R.id.category_emoji_box);
@@ -87,16 +129,16 @@ public class ProductCategoriesActivity extends AppCompatActivity {
             TextView countView = cardView.findViewById(R.id.tv_category_count);
             TextView nameView = cardView.findViewById(R.id.tv_category_name);
 
-            int count = repository.getInStockCategoryCount(category.id);
+            int count = info.inStockCount;
 
             emojiView.setText(category.emoji);
             nameView.setText(category.name);
 
-            emojiBox.setBackground(createRoundedDrawable(category.bgColor, 14));
+            emojiBox.setBackground(createRoundedDrawable(category.bgColor, 16));
 
             if (count > 0) {
                 countView.setText(String.valueOf(count));
-                countView.setTextColor(parseColorSafe(category.textColor, Color.BLACK));
+                countView.setTextColor(Ui.parseColorSafe(category.textColor, Color.BLACK));
                 countView.setBackground(createRoundedDrawable(category.bgColor, 10));
                 countView.setVisibility(View.VISIBLE);
             } else {
@@ -109,11 +151,19 @@ public class ProductCategoriesActivity extends AppCompatActivity {
                 startActivity(intent);
             });
 
+            card.setOnLongClickListener(v -> {
+                if (info.isSystem) {
+                    return false;
+                }
+                showRemoveCategoryDialog(category);
+                return true;
+            });
+
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
             params.width = 0;
-            params.height = GridLayout.LayoutParams.WRAP_CONTENT;
+            params.height = Ui.dp(this, 176);
             params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-            params.setMargins(dp(2), dp(2), dp(2), dp(2));
+            params.setMargins(Ui.dp(this, 1), Ui.dp(this, 1), Ui.dp(this, 1), Ui.dp(this, 1));
             cardView.setLayoutParams(params);
 
             categoriesGrid.addView(cardView);
@@ -128,18 +178,19 @@ public class ProductCategoriesActivity extends AppCompatActivity {
         ImageButton closeButton = sheet.findViewById(R.id.sheet_close_btn);
         EditText nameInput = sheet.findViewById(R.id.input_category_name);
         GridLayout emojiGrid = sheet.findViewById(R.id.grid_emoji);
-        GridLayout colorGrid = sheet.findViewById(R.id.grid_colors);
+        LinearLayout colorGrid = sheet.findViewById(R.id.layout_colors);
+        EditText emojiInput = sheet.findViewById(R.id.input_category_emoji);
         FrameLayout previewEmojiBox = sheet.findViewById(R.id.preview_emoji_box);
         TextView previewEmoji = sheet.findViewById(R.id.tv_preview_emoji);
         TextView previewName = sheet.findViewById(R.id.tv_preview_name);
         Button createButton = sheet.findViewById(R.id.btn_create_category);
 
-        final String[] selectedEmoji = {"🥗"};
+        final String[] selectedEmoji = {""};
         final ColorOption[] selectedColor = {COLOR_OPTIONS[3]};
 
         closeButton.setOnClickListener(v -> dialog.dismiss());
 
-        populateEmojiOptions(emojiGrid, selectedEmoji, selectedColor, previewEmojiBox, previewEmoji, previewName, nameInput);
+        emojiGrid.setVisibility(View.GONE);
         populateColorOptions(emojiGrid, colorGrid, selectedEmoji, selectedColor, previewEmojiBox, previewEmoji, previewName, nameInput);
         updatePreview(previewEmojiBox, previewEmoji, previewName, selectedEmoji[0], selectedColor[0], nameInput.getText().toString());
 
@@ -158,64 +209,87 @@ public class ProductCategoriesActivity extends AppCompatActivity {
             }
         });
 
+        if (emojiInput != null) {
+            emojiInput.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    selectedEmoji[0] = s == null ? "" : s.toString().trim();
+                    updatePreview(previewEmojiBox, previewEmoji, previewName, selectedEmoji[0], selectedColor[0], textOf(nameInput));
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                }
+            });
+        }
+
         createButton.setOnClickListener(v -> {
             String name = nameInput.getText() != null ? nameInput.getText().toString().trim() : "";
             if (name.isEmpty()) {
                 nameInput.setError(getString(R.string.category_name_required));
                 return;
             }
-            repository.addCategory(name, selectedEmoji[0], selectedColor[0].bgColor, selectedColor[0].textColor);
-            dialog.dismiss();
-            renderCategories();
+            String emoji = selectedEmoji[0] == null || selectedEmoji[0].trim().isEmpty()
+                    ? getString(R.string.emoji_placeholder)
+                    : selectedEmoji[0].trim();
+            DataClient.createProductCategory(name, emoji, selectedColor[0].bgColor, selectedColor[0].textColor,
+                    new DataClient.Callback<DataClient.CategoryInfo>() {
+                        @Override
+                        public void onSuccess(DataClient.CategoryInfo data) {
+                            dialog.dismiss();
+                            loadCategories();
+                        }
+
+                        @Override
+                        public void onError(Exception error) {
+                            dialog.dismiss();
+                        }
+                    });
         });
 
         dialog.show();
     }
 
-    private void populateEmojiOptions(
-            GridLayout emojiGrid,
-            String[] selectedEmoji,
-            ColorOption[] selectedColor,
-            FrameLayout previewEmojiBox,
-            TextView previewEmoji,
-            TextView previewName,
-            EditText nameInput
-    ) {
-        emojiGrid.removeAllViews();
+    private void showRemoveCategoryDialog(AppRepository.Category category) {
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View sheet = LayoutInflater.from(this).inflate(R.layout.dialog_remove_category_confirm, null);
+        dialog.setContentView(sheet);
 
-        for (String emoji : EMOJI_OPTIONS) {
-            TextView option = new TextView(this);
-            option.setText(emoji);
-            option.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f);
-            option.setGravity(Gravity.CENTER);
+        TextView message = sheet.findViewById(R.id.tv_remove_category_message);
+        Button confirmButton = sheet.findViewById(R.id.btn_confirm_remove_category);
+        Button cancelButton = sheet.findViewById(R.id.btn_cancel_remove_category);
 
-            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-            params.width = dp(48);
-            params.height = dp(48);
-            params.setMargins(dp(4), dp(4), dp(4), dp(4));
-            option.setLayoutParams(params);
+        message.setText(getString(R.string.remove_category_message, category.name));
 
-            boolean isSelected = emoji.equals(selectedEmoji[0]);
-            option.setBackground(createSelectableCellDrawable(
-                    isSelected ? selectedColor[0].bgColor : "#FAFAF8",
-                    isSelected ? selectedColor[0].textColor : "#14000000",
-                    12,
-                    isSelected ? 2.5f : 1.2f
-            ));
+        confirmButton.setOnClickListener(v -> {
+            DataClient.deleteProductCategory(category.id, new DataClient.Callback<Boolean>() {
+                @Override
+                public void onSuccess(Boolean data) {
+                    dialog.dismiss();
+                    loadCategories();
+                }
 
-            option.setOnClickListener(v -> {
-                selectedEmoji[0] = emoji;
-                populateEmojiOptions(emojiGrid, selectedEmoji, selectedColor, previewEmojiBox, previewEmoji, previewName, nameInput);
-                updatePreview(previewEmojiBox, previewEmoji, previewName, selectedEmoji[0], selectedColor[0], textOf(nameInput));
+                @Override
+                public void onError(Exception error) {
+                    dialog.dismiss();
+                }
             });
+        });
 
-            emojiGrid.addView(option);
-        }
+        cancelButton.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
     }
+
+    
 
     private void populateColorOptions(
             GridLayout emojiGrid,
-            GridLayout colorGrid,
+            LinearLayout colorGrid,
             String[] selectedEmoji,
             ColorOption[] selectedColor,
             FrameLayout previewEmojiBox,
@@ -229,13 +303,11 @@ public class ProductCategoriesActivity extends AppCompatActivity {
             TextView option = new TextView(this);
             option.setText(colorOption == selectedColor[0] ? "✓" : "");
             option.setGravity(Gravity.CENTER);
-            option.setTextColor(parseColorSafe(colorOption.textColor, Color.BLACK));
+            option.setTextColor(Ui.parseColorSafe(colorOption.textColor, Color.BLACK));
             option.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
 
-            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-            params.width = dp(36);
-            params.height = dp(36);
-            params.setMargins(dp(4), dp(4), dp(4), dp(4));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(Ui.dp(this, 36), Ui.dp(this, 36));
+            params.setMargins(Ui.dp(this, 4), Ui.dp(this, 4), Ui.dp(this, 4), Ui.dp(this, 4));
             option.setLayoutParams(params);
 
             boolean isSelected = colorOption == selectedColor[0];
@@ -249,7 +321,6 @@ public class ProductCategoriesActivity extends AppCompatActivity {
             option.setOnClickListener(v -> {
                 selectedColor[0] = colorOption;
                 populateColorOptions(emojiGrid, colorGrid, selectedEmoji, selectedColor, previewEmojiBox, previewEmoji, previewName, nameInput);
-                populateEmojiOptions(emojiGrid, selectedEmoji, selectedColor, previewEmojiBox, previewEmoji, previewName, nameInput);
                 updatePreview(previewEmojiBox, previewEmoji, previewName, selectedEmoji[0], selectedColor[0], textOf(nameInput));
             });
 
@@ -266,47 +337,30 @@ public class ProductCategoriesActivity extends AppCompatActivity {
             String name
     ) {
         previewEmojiBox.setBackground(createRoundedDrawable(color.bgColor, 14));
-        previewEmoji.setText(emoji);
+        String safeEmoji = emoji == null || emoji.trim().isEmpty()
+                ? getString(R.string.emoji_placeholder)
+                : emoji.trim();
+        previewEmoji.setText(safeEmoji);
         previewName.setText(name == null || name.trim().isEmpty() ? getString(R.string.category_name_default) : name.trim());
     }
 
     private GradientDrawable createRoundedDrawable(String fillColor, int radiusDp) {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setShape(GradientDrawable.RECTANGLE);
-        drawable.setCornerRadius(dp(radiusDp));
-        drawable.setColor(parseColorSafe(fillColor, Color.WHITE));
-        return drawable;
+        return Ui.roundedRect(this, fillColor, radiusDp, Color.WHITE);
     }
 
     private GradientDrawable createSelectableCellDrawable(String fillColor, String strokeColor, int radiusDp, float strokeDp) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setShape(GradientDrawable.RECTANGLE);
-        drawable.setCornerRadius(dp(radiusDp));
-        drawable.setColor(parseColorSafe(fillColor, Color.WHITE));
+        drawable.setCornerRadius(Ui.dp(this, radiusDp));
+        drawable.setColor(Ui.parseColorSafe(fillColor, Color.WHITE));
         if (strokeDp > 0f) {
-            drawable.setStroke(dp(strokeDp), parseColorSafe(strokeColor, Color.TRANSPARENT));
+            drawable.setStroke(Ui.dp(this, strokeDp), Ui.parseColorSafe(strokeColor, Color.TRANSPARENT));
         }
         return drawable;
     }
 
-    private int parseColorSafe(String value, int fallback) {
-        try {
-            return Color.parseColor(value);
-        } catch (Exception ignored) {
-            return fallback;
-        }
-    }
-
     private String textOf(EditText editText) {
         return editText.getText() == null ? "" : editText.getText().toString();
-    }
-
-    private int dp(float value) {
-        return Math.round(TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                value,
-                getResources().getDisplayMetrics()
-        ));
     }
 
     private static final class ColorOption {
@@ -319,3 +373,5 @@ public class ProductCategoriesActivity extends AppCompatActivity {
         }
     }
 }
+
+
